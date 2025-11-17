@@ -4,8 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href='https://fonts.googleapis.com/css?family=Boldonse&display=swap' rel='stylesheet'>
+  <link rel="preload" href="https://fonts.googleapis.com/css?family=Boldonse" as="style">
+  <title>KOŁO LOSU (Wersja HTML/CSS)</title>
   <style>
-    /* Cały CSS zostaje bez zmian, jest poprawny */
     html, body {
       margin: 0;
       padding: 0;
@@ -31,21 +32,55 @@
       box-shadow: 0 0 20px rgba(255,255,255,0.2);
       border: 8px solid #444;
       background: transparent;
-      overflow: visible;
+      overflow: hidden; /* Zmienione z 'visible' na 'hidden' dla koła CSS */
       display: flex;
       justify-content: center;
       align-items: center;
       transition: opacity 0.5s;
     }
-    #wheel, #jackpot-wheel {
+
+    /* NOWY STYL DLA KOŁA HTML/CSS */
+    .wheel-core {
+      position: relative;
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      position: relative;
       box-shadow: inset 0 0 15px rgba(0,0,0,0.7);
-      background: transparent;
-      display: block;
+      
+      /* To jest serce animacji obrotu. Długi czas i easing. */
+      transition: transform 7000ms cubic-bezier(.17,.86,.34,.99);
+      
+      /* Tło będzie ustawione przez JS (conic-gradient) */
     }
+    .wheel-segments-container {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border-radius: 50%;
+    }
+    .wheel-segment {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      border-radius: 50%;
+    }
+    .segment-text {
+      position: absolute;
+      top: 5%; /* Odległość tekstu od krawędzi */
+      left: 50%;
+      transform: translateX(-50%);
+      transform-origin: center;
+      font-size: 14px; /* Rozmiar tekstu na kole */
+      font-weight: bold;
+      color: white;
+      text-shadow: 0 0 3px #000;
+      text-align: center;
+      max-width: 40%;
+      line-height: 1.2;
+      /* Tekst jest obrócony o 90 stopni, aby leżał wzdłuż promienia */
+      transform: translateX(-50%) rotate(90deg);
+      user-select: none;
+    }
+    /* Koniec nowych stylów */
+    
     #pointer, #jackpot-pointer {
       position: absolute;
       top: 50%;
@@ -220,14 +255,21 @@
 <body>
 <div id="overlay">
   <div id="wheel-container">
-    <canvas id="wheel" width="1600" height="1600"></canvas>
+    <div id="wheel" class="wheel-core">
+      <div class="wheel-segments-container">
+        </div>
+    </div>
     <div id="pointer"></div>
     <button id="spin-button"></button>
     <div id="countdown"></div>
     <div id="label">KOŁO LOSU</div>
   </div>
+  
   <div id="jackpot-wheel-container" style="display:none;">
-    <canvas id="jackpot-wheel" width="1600" height="1600"></canvas>
+    <div id="jackpot-wheel" class="wheel-core">
+      <div class="wheel-segments-container">
+        </div>
+    </div>
     <div id="jackpot-pointer"></div>
     <button id="jackpot-spin-button"></button>
     <div id="jackpot-glow">JACKPOT</div>
@@ -235,9 +277,8 @@
   </div>
 </div>
 <button id="restart-button"></button>
+
 <script>
-// ----- CAŁA SEKCJA NAGRÓD I DŹWIĘKÓW JEST IDENTYCZNA -----
-// ----- ZOSTAWIONA BEZ ZMIAN -----
 document.addEventListener('DOMContentLoaded', () => {
   try {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -246,168 +287,57 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Audio nie może być zainicjalizowane automatycznie');
   }
 });
-const prizes = [
-  {
-    name: "Nic xd",
-    probability: 0.08,
-    type: "regular",
-    color: "linear-gradient(135deg, #8e44ad, #3498db)",
-    gif: "https://cdn.7tv.app/emote/01F38SGEQG000AG1XYT03162S8/4x.avif"
-  },
-  {
-    name: "Stanie na głowie",
-    probability: 0.10,
-    type: "regular",
-    color: "linear-gradient(135deg, #1d976c, #93f9b9)",
-    gif: "https://www.healthshots.com/wp-content/uploads/2019/12/Yoga-headstand.gif"
-  },
-  {
-    name: "Timeout 1h dla wybranego widza",
-    probability: 0.08,
-    type: "regular",
-    color: "linear-gradient(135deg, #009fff, #ec2f4b)",
-    gif: "https://cdn.7tv.app/emote/01H1848QNG0005EZED5J0EYKHR/4x.webp"
-  },
-  {
-    name: "Krzyczę BOKS - STOP",
-    probability: 0.08,
-    type: "regular",
-    color: "linear-gradient(135deg, #ff512f, #dd2476)",
-    gif: "https://cdn.7tv.app/emote/01G3SCEE20000AVHF824CCM0DA/4x.avif"
-  },
-  {
-    name: "Nic xd",
-    probability: 0.05,
-    type: "regular",
-    color: "linear-gradient(135deg, #8e44ad, #3498db)",
-    gif: "https://cdn.7tv.app/emote/01G6SRPZ400006H81S3K13JY36/4x.webp"
-  },
-  {
-    name: "Piję łyka wody (lub Dzika®)",
-    probability: 0.08,
-    type: "regular",
-    color: "linear-gradient(135deg, #3F2B96, #A8C0FF)",
-    gif: "https://cdn.7tv.app/emote/01GCWH9E9R000D8RDSXFWM2GBA/4x.avif"
-  },
-  {
-    name: "10 pompek",
-    probability: 0.08,
-    type: "regular",
-    color: "linear-gradient(135deg, #fc466b, #3f5efb)",
-    gif: "https://cdn.7tv.app/emote/01F6R3WYDR000B7RB73RKS83AK/4x.avif"
-  },
-  {
-    name: "Nie odzywam się przez 2 minuty",
-    probability: 0.08,
-    type: "regular",
-    color: "linear-gradient(135deg, #00C9FF, #92FE9D)",
-    gif: "https://cdn.7tv.app/emote/01GYZBC7FR0006TGDMK2MFGXGW/4x.webp"
-  },
-  {
-    name: "Stoję w miejscu przez minutę",
-    probability: 0.08,
-    type: "regular",
-    color: "linear-gradient(135deg, #4b6cb7, #182848)",
-    gif: "https://cdn.7tv.app/emote/01GNQJGTSG00078AS6P1AC892Q/4x.webp"
-  },
-  {
-    name: "krzycze ło tego",
-    probability: 0.08,
-    type: "regular",
-    color: "linear-gradient(135deg, #8e44ad, #3498db)",
-    gif: "https://cdn.7tv.app/emote/01H1AAGAGR0003C6C0Q3R0B0VX/4x.avif"
-  },
-  {
-    name: "Nic xd",
-    probability: 0.08,
-    type: "regular",
-    color: "linear-gradient(135deg, #8e44ad, #3498db)",
-    gif: "https://cdn.7tv.app/emote/01FZ975PV8000B4AWRZNMVNEXN/4x.avif"
-  },
-  {
-    name: "Mówię głosem dziwki przez 2 minuty",
-    probability: 0.08,
-    type: "regular",
-    color: "linear-gradient(135deg, #BB377D, #FBD3E9)",
-    gif: "https://media1.tenor.com/m/1SPr0yOrWdgAAAAd/paprikafume-slay-queen.gif"
-  },  
-   {
-    name: "tts dla wszystkich na 2 minuty",
-    probability: 0.03,
-    type: "regular",
-    color: "linear-gradient(135deg, #BB377D, #FBD3E9)",
-    gif: "https://media1.tenor.com/m/1SPr0yOrWdgAAAAd/paprikafume-slay-queen.gif"
-  }, 
 
-  {
-    name: "JACKPOT",
-    probability: 0.02,
-    type: "jackpot",
-    color: "gold",
-    gif: ""
-  }
+const prizes = [
+  { name: "Nic xd", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #8e44ad, #3498db)", gif: "https://cdn.7tv.app/emote/01F38SGEQG000AG1XYT03162S8/4x.avif" },
+  { name: "Stanie na głowie", probability: 0.10, type: "regular", color: "linear-gradient(135deg, #1d976c, #93f9b9)", gif: "https://www.healthshots.com/wp-content/uploads/2019/12/Yoga-headstand.gif" },
+  { name: "Timeout 1h dla wybranego widza", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #009fff, #ec2f4b)", gif: "https://cdn.7tv.app/emote/01H1848QNG0005EZED5J0EYKHR/4x.webp" },
+  { name: "Krzyczę BOKS - STOP", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #ff512f, #dd2476)", gif: "https://cdn.7tv.app/emote/01G3SCEE20000AVHF824CCM0DA/4x.avif" },
+  { name: "Nic xd", probability: 0.05, type: "regular", color: "linear-gradient(135deg, #8e44ad, #3498db)", gif: "https://cdn.7tv.app/emote/01G6SRPZ400006H81S3K13JY36/4x.webp" },
+  { name: "Piję łyka wody (lub Dzika®)", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #3F2B96, #A8C0FF)", gif: "https://cdn.7tv.app/emote/01GCWH9E9R000D8RDSXFWM2GBA/4x.avif" },
+  { name: "10 pompek", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #fc466b, #3f5efb)", gif: "https://cdn.7tv.app/emote/01F6R3WYDR000B7RB73RKS83AK/4x.avif" },
+  { name: "Nie odzywam się przez 2 minuty", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #00C9FF, #92FE9D)", gif: "https://cdn.7tv.app/emote/01GYZBC7FR0006TGDMK2MFGXGW/4x.webp" },
+  { name: "Stoję w miejscu przez minutę", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #4b6cb7, #182848)", gif: "https://cdn.7tv.app/emote/01GNQJGTSG00078AS6P1AC892Q/4x.webp" },
+  { name: "krzycze ło tego", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #8e44ad, #3498db)", gif: "https://cdn.7tv.app/emote/01H1AAGAGR0003C6C0Q3R0B0VX/4x.avif" },
+  { name: "Nic xd", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #8e44ad, #3498db)", gif: "https://cdn.7tv.app/emote/01FZ975PV8000B4AWRZNMVNEXN/4x.avif" },
+  { name: "Mówię głosem dziwki przez 2 minuty", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #BB377D, #FBD3E9)", gif: "https://media1.tenor.com/m/1SPr0yOrWdgAAAAd/paprikafume-slay-queen.gif" },  
+  { name: "tts dla wszystkich na 2 minuty", probability: 0.03, type: "regular", color: "linear-gradient(135deg, #BB377D, #FBD3E9)", gif: "https://media1.tenor.com/m/1SPr0yOrWdgAAAAd/paprikafume-slay-queen.gif" }, 
+  { name: "JACKPOT", probability: 0.02, type: "jackpot", color: "gold", gif: "" }
 ];
 const jackpotPrizes = [
-  {
-    name: "wale jajo na łeb", 
-    probability: 0.3, 
-    type: "special", 
-    color: "linear-gradient(135deg, #ffe898, #57370e)", 
-    gif: "https://cdn.7tv.app/emote/01H8CPJG9R0009CBM9NXZQY8HT/4x.avif"
-  },
-  {
-    name: "zerowanie piwa", 
-    probability: 0.3, 
-    type: "special", 
-    color: "linear-gradient(135deg, #ffe898, #57370e)", 
-    gif: "https://cdn.7tv.app/emote/01H8CPJG9R0009CBM9NXZQY8HT/4x.avif"
-  },
-  {
-    name: "VIP", 
-    probability: 0.2, 
-    type: "special", 
-    color: "linear-gradient(135deg, #ffe898, #57370e)", 
-    gif: "https://cdn.7tv.app/emote/01G3E8EC580004KFXXGTW7QDKM/4x.avif"
-  },
-  {
-    name: "STREAM 24H!!!", 
-    probability: 0.2, 
-    type: "special", 
-    color: "linear-gradient(135deg, #ffe898, #57370e)", 
-    gif: "https://cdn.7tv.app/emote/01J0KSR6D0000CV45TECHJ0JRZ/4x.avif"
-  }
+  { name: "wale jajo na łeb", probability: 0.3, type: "special", color: "linear-gradient(135deg, #ffe898, #57370e)", gif: "https://cdn.7tv.app/emote/01H8CPJG9R0009CBM9NXZQY8HT/4x.avif" },
+  { name: "zerowanie piwa", probability: 0.3, type: "special", color: "linear-gradient(135deg, #ffe898, #57370e)", gif: "https://cdn.7tv.app/emote/01H8CPJG9R0009CBM9NXZQY8HT/4x.avif" },
+  { name: "VIP", probability: 0.2, type: "special", color: "linear-gradient(135deg, #ffe898, #57370e)", gif: "https://cdn.7tv.app/emote/01G3E8EC580004KFXXGTW7QDKM/4x.avif" },
+  { name: "STREAM 24H!!!", probability: 0.2, type: "special", color: "linear-gradient(135deg, #ffe898, #57370e)", gif: "https://cdn.7tv.app/emote/01J0KSR6D0000CV45TECHJ0JRZ/4x.avif" }
 ];
 const jackpotLightsCount = 30; 
 let spinning = false;
 let selectedPrizeIndex = null;
 let selectedJackpotIndex = null;
 let isJackpotPhase = false;
-let animFrame = null;
 let currentAngle = 0, jackpotCurrentAngle = 0;
-let pointerLastTick = -1;
-let jackpotPointerLastTick = -1;
 let resultTimeout = null;
-let resultAnim = null;
 let resultGif = null;
+
 let audioContext = null;
 let isAudioInitialized = false;
+
 let jackpotLightInterval = null;
 let currentLightIndex = 0;
+let tickInterval = null; // Do symulowania dźwięku tykania
+
 let prevSeg = { m: -1, j: -1 };
 
+// Funkcje audio i TTS (bez zmian)
 function initAudio() {
   if (!isAudioInitialized) {
     try {
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       if (audioContext.state === 'suspended') {
-        audioContext.resume().then(() => {
-          console.log('Audio context odblokowany');
-        });
+        audioContext.resume().then(() => { console.log('Audio context odblokowany'); });
       }
       isAudioInitialized = true;
-    } catch (e) {
-      console.log('Web Audio API nie jest obsługiwane');
-    }
+    } catch (e) { console.log('Web Audio API nie jest obsługiwane'); }
   }
 }
 function forceAudioInit() {
@@ -424,366 +354,296 @@ function forceAudioInit() {
 }
 function playCountdownSound() {
   if (!audioContext) return;
-  
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
-  
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
-  
   oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
   oscillator.type = 'sine';
-  
   gainNode.gain.setValueAtTime(0, audioContext.currentTime);
   gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.01);
   gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
-  
   oscillator.start(audioContext.currentTime);
   oscillator.stop(audioContext.currentTime + 0.3);
 }
 function playTickSound() {
   if (!audioContext) return;
-  
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
-  
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
-  
   oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
   oscillator.type = 'square';
-  
   gainNode.gain.setValueAtTime(0, audioContext.currentTime);
   gainNode.gain.linearRampToValueAtTime(0.05, audioContext.currentTime + 0.005);
   gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
-  
   oscillator.start(audioContext.currentTime);
   oscillator.stop(audioContext.currentTime + 0.1);
 }
-
 function playRegularWinSound() {
   if (!audioContext) return;
-
   const melodies = [
     [659.25, 783.99, 880, 783.99, 659.25, 880, 1046.50],
     [530.81, 596, 530.81, 564.81, 596, 530.81, 661.63],
     [482.41, 498, 516.54, 546.83, 574.61, 510, 530.81, 564.81]
   ];
-
   const selectedMelody = melodies[Math.floor(Math.random() * melodies.length)];
   const noteDuration = 0.16;
-
   selectedMelody.forEach((frequency, index) => {
     const startTime = audioContext.currentTime + index * noteDuration;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
-
     osc.connect(gain);
     gain.connect(audioContext.destination);
-
     osc.frequency.setValueAtTime(frequency, startTime);
     osc.type = 'sine';
-
     gain.gain.setValueAtTime(0, startTime);
     gain.gain.linearRampToValueAtTime(0.12, startTime + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration - 0.01);
-
     osc.start(startTime);
     osc.stop(startTime + noteDuration);
   });
 }
-
 function playSpecialWinSound() {
   if (!audioContext) return;
-
-  const melody = [
-   440, 523.25, 659.26, 783.99, 1046.5, 1318.5, 1568, 2093, 2637, 2093, 1568, 1318.5, 1046.5, 1568, 2093, 1568, 2093, 1568, 2093, 1568, 1568, 2093, 1568   
-  ];
+  const melody = [ 440, 523.25, 659.26, 783.99, 1046.5, 1318.5, 1568, 2093, 2637, 2093, 1568, 1318.5, 1046.5, 1568, 2093, 1568, 2093, 1568, 2093, 1568, 1568, 2093, 1568 ];
   const noteDuration = 0.12;
-
   melody.forEach((frequency, index) => {
     const startTime = audioContext.currentTime + index * noteDuration;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
-
     osc.connect(gain);
     gain.connect(audioContext.destination);
-
     osc.frequency.setValueAtTime(frequency, startTime);
     osc.type = 'sawtooth';
-
     gain.gain.setValueAtTime(0, startTime);
     gain.gain.linearRampToValueAtTime(0.14, startTime + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration - 0.01);
-
     osc.start(startTime);
     osc.stop(startTime + noteDuration);
   });
 }
 function playJackpotSound() {
   if (!audioContext) return;
-  
   const baseFreq = 261.63; 
   const frequencies = [baseFreq, baseFreq * 1.25, baseFreq * 1.5, baseFreq * 2]; 
-  
   frequencies.forEach((freq, index) => {
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
-    
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
-    
     oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
     oscillator.type = 'sawtooth';
-    
     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
     gainNode.gain.linearRampToValueAtTime(0.08, audioContext.currentTime + 0.1);
     gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 1.5);
-    
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 1.5);
   });
-  
   setTimeout(() => {
     const melody = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50]; 
     melody.forEach((frequency, index) => {
       const startTime = audioContext.currentTime + index * 0.15;
-      
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      
       oscillator.frequency.setValueAtTime(frequency, startTime);
       oscillator.type = 'triangle';
-      
       gainNode.gain.setValueAtTime(0, startTime);
       gainNode.gain.linearRampToValueAtTime(0.12, startTime + 0.01);
       gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + 0.14);
-      
       oscillator.start(startTime);
       oscillator.stop(startTime + 0.15);
     });
   }, 300);
 }
-
 let selectedVoice = null;
-
 function initTTS() {
   if (speechSynthesis.getVoices().length === 0) {
-    speechSynthesis.addEventListener('voiceschanged', () => {
-      selectPolishVoice();
-    });
-  } else {
-    selectPolishVoice();
-  }
+    speechSynthesis.addEventListener('voiceschanged', () => { selectPolishVoice(); });
+  } else { selectPolishVoice(); }
 }
-
 function selectPolishVoice() {
   const voices = speechSynthesis.getVoices();
   selectedVoice = voices.find(voice => 
-    voice.lang.includes('pl') || 
-    voice.name.toLowerCase().includes('polish') ||
-    voice.name.toLowerCase().includes('paulina') ||
-    voice.name.toLowerCase().includes('zofia')
+    voice.lang.includes('pl') || voice.name.toLowerCase().includes('polish') ||
+    voice.name.toLowerCase().includes('paulina') || voice.name.toLowerCase().includes('zofia')
   );
-  
-  if (!selectedVoice && voices.length > 0) {
-    selectedVoice = voices[0];
-  }
+  if (!selectedVoice && voices.length > 0) { selectedVoice = voices[0]; }
+  console.log('Wybrany głos TTS:', selectedVoice?.name || 'Brak dostępnych głosów');
 }
-
 function speakText(text) {
   if ('speechSynthesis' in window) {
     speechSynthesis.cancel();
-    
     const utterance = new SpeechSynthesisUtterance(text);
-    
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    }
-    
+    if (selectedVoice) { utterance.voice = selectedVoice; }
     utterance.rate = 1.35; 
     utterance.pitch = 0.75; 
     utterance.volume = 0.95; 
-    
     speechSynthesis.speak(utterance);
-  } else {
-    console.log('TTS nie jest obsługiwane w tej przeglądarce');
-  }
+  } else { console.log('TTS nie jest obsługiwane w tej przeglądarce'); }
 }
 
-const wheelCanvas = document.getElementById('wheel');
-const wheelCtx = wheelCanvas.getContext('2d');
-const jackpotCanvas = document.getElementById('jackpot-wheel');
-const jackpotCtx = jackpotCanvas.getContext('2d');
-const centerX = wheelCanvas.width / 2;
-const centerY = wheelCanvas.height / 2;
-const radius = wheelCanvas.width / 2 - 30;
+// *** NOWA LOGIKA BUDOWANIA KOŁA ***
 
-// ----- KONIEC Z PRE-RENDERINGIEM -----
-// Usunęliśmy preRenderedWheel i preCtx
-
-
-// ----- NOWA "ULTRA-LEKKA" FUNKCJA RYSUJĄCA -----
-// Rysuje proste kolory, bez gradientów, cieni i tekstu.
-// To jest nasza nowa funkcja rysująca.
-function drawWheel_Direct(ctx, prizesArr, angle, isJackpot) {
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  const total = prizesArr.length;
-  const arc = 2 * Math.PI / total;
-
-  // Bezpieczne kolory, jeśli wszystko inne zawiedzie
-  const simpleColors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
-
-  for (let i = 0; i < total; i++) {
-    const prize = prizesArr[i];
-    const startAngle = angle + i * arc;
-    const endAngle = startAngle + arc;
-
-    ctx.save();
-    
-    // 1. Rysowanie segmentu
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
-    ctx.closePath();
-
-    // 2. Wypełnianie prostym kolorem (bez gradientów i cieni)
-    if (prize.type === "jackpot" && !isJackpot) {
-        ctx.fillStyle = 'gold'; // Prosty złoty
-    } else if (isJackpot) {
-        ctx.fillStyle = simpleColors[i % 4];
-    } else {
-        ctx.fillStyle = simpleColors[i % 6];
-    }
-    ctx.fill();
-
-    // 3. Rysowanie obramowania
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // 4. CELOWO NIE RYSUJEMY TEKSTU (ctx.fillText)
-    // To jest nasz główny podejrzany o awarię.
-
-    ctx.restore();
-  }
+// Ta funkcja buduje tło koła (conic-gradient) na podstawie prawdopodobieństw
+function generateConicGradientString(prizesArr) {
+  let gradientString = 'conic-gradient(';
+  let currentAngle = 0;
   
-  // Rysowanie zewnętrznej ramki
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, radius+4, 0, 2*Math.PI);
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 4;
-  ctx.stroke();
-  ctx.restore();
+  // Oblicz sumę prawdopodobieństw (na wypadek gdyby nie sumowały się do 1)
+  const totalProb = prizesArr.reduce((sum, p) => sum + p.probability, 0);
+
+  prizesArr.forEach(prize => {
+    const angle = (prize.probability / totalProb) * 360;
+    const color = (prize.color === 'gold') ? '#ffd700' : prize.color;
+    gradientString += `${color} ${currentAngle}deg ${currentAngle + angle}deg, `;
+    currentAngle += angle;
+  });
+
+  // Usuń ostatni przecinek i spację
+  gradientString = gradientString.slice(0, -2);
+  gradientString += ')';
+  
+  return gradientString;
 }
-// ----- KONIEC NOWEJ FUNKCJI -----
 
+// Ta funkcja buduje segmenty koła (teksty)
+function buildWheel(prizesArr, wheelId) {
+  const wheelElement = document.getElementById(wheelId);
+  if (!wheelElement) return;
 
+  const segmentsContainer = wheelElement.querySelector('.wheel-segments-container');
+  segmentsContainer.innerHTML = ''; // Wyczyść stare segmenty
+
+  // 1. Ustaw tło (gradient)
+  wheelElement.style.background = generateConicGradientString(prizesArr);
+
+  // 2. Stwórz i dodaj etykiety tekstowe
+  let accumulatedAngle = 0;
+  const totalProb = prizesArr.reduce((sum, p) => sum + p.probability, 0);
+
+  prizesArr.forEach(prize => {
+    const angle = (prize.probability / totalProb) * 360;
+    const middleAngle = accumulatedAngle + (angle / 2); // Kąt do środka segmentu
+
+    const segmentDiv = document.createElement('div');
+    segmentDiv.className = 'wheel-segment';
+    // Obracamy cały segment, aby tekst był na środku
+    segmentDiv.style.transform = `rotate(${middleAngle}deg)`;
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'segment-text';
+    textDiv.textContent = prize.name;
+    
+    // Specjalna obsługa "JACKPOT"
+    if (prize.type === 'jackpot') {
+      textDiv.style.color = '#000';
+      textDiv.style.textShadow = '0 0 3px #fff';
+      textDiv.style.fontSize = '18px';
+    }
+
+    segmentDiv.appendChild(textDiv);
+    segmentsContainer.appendChild(segmentDiv);
+
+    accumulatedAngle += angle;
+  });
+}
+
+// *** ZMODYFIKOWANA LOGIKA OBROTU ***
+
+// Funkcja losująca (bez zmian)
 function selectPrizeByProbability(arr, lastIdx) {
   let selected = -1;
   let attempts = 0; 
-  
   while (attempts < 5) { 
     let r = Math.random();
     let sum = 0;
     for (let i = 0; i < arr.length; i++) {
       sum += arr[i].probability;
-      if (r <= sum) {
-        selected = i;
-        break;
-      }
+      if (r <= sum) { selected = i; break; }
     }
     if (selected === -1) selected = arr.length - 1;
-
-    if (arr.length <= 1) break; 
-
-    if (selected !== lastIdx) {
-      break; 
-    }
-    
+    if (arr.length <= 1 || selected !== lastIdx) break; 
     attempts++;
   }
   return selected;
 }
 
-function easeInOut(t) {
-  return t<0.5 ? 4*t*t*t : 1-(-2*t+2)**3/2;
+// Funkcja symulująca "tykanie" i podskok wskaźnika
+function simulateTick() {
+  playTickSound();
+  const pointer = isJackpotPhase ? document.getElementById('jackpot-pointer') : document.getElementById('pointer');
+  pointer.classList.remove('bounce');
+  void pointer.offsetWidth; // force reflow
+  pointer.classList.add('bounce');
 }
 
+// Główna funkcja obrotu
 function spinWheel() {
   if (spinning) return;
   spinning = true;
   isJackpotPhase = false;
+  
+  const wheelElement = document.getElementById('wheel');
   document.getElementById('wheel-container').style.opacity = "1";
   document.getElementById('jackpot-wheel-container').style.display = "none";
   
   selectedPrizeIndex = selectPrizeByProbability(prizes, prevSeg.m);
+  const totalProb = prizes.reduce((sum, p) => sum + p.probability, 0);
   
-  const totalSegments = prizes.length;
-  const arc = 2*Math.PI/totalSegments;
-  const minRot = Math.floor(Math.random() * 5) + 4;  const spinDuration = 4000 + Math.random()*6000;
-  const start = performance.now();
-  let lastTick = -1;
-  
-  function animate(now) {
-    let t = Math.min((now-start)/spinDuration,1);
-    let eased = easeInOut(t);
-    let targetAngle = minRot*2*Math.PI + (arc*selectedPrizeIndex) + arc/2;
-    currentAngle = (1-eased)*0 + eased*targetAngle;
-    
-    // ----- ZMIANA W ANIMACJI -----
-    // Rysujemy bezpośrednio na widocznym płótnie w każdej klatce
-    drawWheel_Direct(wheelCtx, prizes, -currentAngle, false);
-    
-    // (Reszta logiki, jak shimmer i tick, zostaje bez zmian)
-    const jackpotIdx = prizes.findIndex(p=>p.type==="jackpot");
-    if (spinning && jackpotIdx>=0) {
-      if (document.getElementById('wheel').classList) {
-        document.getElementById('wheel').classList.add('shimmer');
-        setTimeout(()=>document.getElementById('wheel').classList.remove('shimmer'), 500);
-      }
-    }
-    
-    let tick = Math.floor((currentAngle/(2*Math.PI))*totalSegments)%totalSegments;
-    if (tick !== lastTick) {
-      pointerBounce();
-      lastTick = tick;
-    }
-    
-    if (t<1) {
-      animFrame = requestAnimationFrame(animate);
+  let accumulatedAngle = 0;
+  for(let i = 0; i <= selectedPrizeIndex; i++) {
+    const angle = (prizes[i].probability / totalProb) * 360;
+    if(i === selectedPrizeIndex) {
+      accumulatedAngle += (angle / 2); // Celuj w środek
     } else {
-      spinning = false;
-      drawWheel_Direct(wheelCtx, prizes, -currentAngle, false);
-      setTimeout(()=>showResult(prizes[selectedPrizeIndex], false),1000);
+      accumulatedAngle += angle;
     }
   }
-  animate(performance.now());
-}
 
-function pointerBounce() {
-  const pointer = document.getElementById('pointer');
-  pointer.classList.remove('bounce');
-  void pointer.offsetWidth; 
-  pointer.classList.add('bounce');
+  // Kąt docelowy. 360 - ... ponieważ CSS obraca zgodnie z zegarem, a my liczyliśmy kąty odwrotnie
+  // Dodajemy też obroty (minRot) i odejmujemy kąt wskaźnika (90 stopni)
+  const minRot = Math.floor(Math.random() * 5) + 6; // 6-10 pełnych obrotów
+  const targetAngle = (minRot * 360) + 360 - accumulatedAngle - 90; // -90 bo wskaźnik jest na 90 stopniach
+  const spinDuration = 6000 + Math.random() * 2000; // 6-8 sekund
+
+  // Zresetuj pozycję, aby obrót był płynny z poprzedniego miejsca
+  const currentRotation = currentAngle % 360;
+  wheelElement.style.transition = 'none';
+  wheelElement.style.transform = `rotate(${currentRotation}deg)`;
   
-  playTickSound();
+  // Wymuś odświeżenie stylu
+  void wheelElement.offsetWidth;
+
+  // Ustaw docelową animację
+  wheelElement.style.transition = `transform ${spinDuration}ms cubic-bezier(.17,.86,.34,.99)`;
+  wheelElement.style.transform = `rotate(${targetAngle}deg)`;
+
+  currentAngle = targetAngle; // Zapisz nową pozycję
+
+  // Uruchom symulowane tykanie
+  if(tickInterval) clearInterval(tickInterval);
+  tickInterval = setInterval(simulateTick, 150); // Dźwięk co 150ms
+
+  // Pokaż wynik po zakończeniu animacji
+  setTimeout(() => {
+    spinning = false;
+    clearInterval(tickInterval);
+    setTimeout(()=>showResult(prizes[selectedPrizeIndex], false), 1000);
+  }, spinDuration);
 }
 
+// Rozpoczęcie fazy jackpot
 function startJackpotPhase() {
   isJackpotPhase = true;
   document.getElementById('wheel-container').style.opacity = "0";
+  
   setTimeout(()=>{
     document.getElementById('wheel-container').style.display = "none";
     document.getElementById('jackpot-wheel-container').style.display = "block";
     document.getElementById('jackpot-wheel-container').style.opacity = "1";
-    
-    // Rysujemy pierwszą klatkę koła jackpot
-    drawWheel_Direct(jackpotCtx, jackpotPrizes, 0, true);
     
     setupJackpotLights();
 
@@ -793,14 +653,8 @@ function startJackpotPhase() {
     
     jackpotLightInterval = setInterval(() => {
       const prevIndex = (currentLightIndex === 0) ? lights.length - 1 : currentLightIndex - 1;
-      if (lights[prevIndex]) {
-          lights[prevIndex].classList.remove('on');
-      }
-      
-      if (lights[currentLightIndex]) {
-        lights[currentLightIndex].classList.add('on');
-      }
-      
+      if (lights[prevIndex]) { lights[prevIndex].classList.remove('on'); }
+      if (lights[currentLightIndex]) { lights[currentLightIndex].classList.add('on'); }
       currentLightIndex = (currentLightIndex + 1) % jackpotLightsCount;
     }, 75);
 
@@ -808,68 +662,61 @@ function startJackpotPhase() {
   }, 500);
 }
 
+// Obrót kołem jackpot
 function spinJackpotWheel() {
   if (spinning) return;
   spinning = true;
-  
+
+  const wheelElement = document.getElementById('jackpot-wheel');
   selectedJackpotIndex = selectPrizeByProbability(jackpotPrizes, prevSeg.j);
-  
-  const totalSegments = jackpotPrizes.length;
-  const arc = 2*Math.PI/totalSegments;
-  const minRot = 6;
-  const spinDuration = 4000 + Math.random()*4000;
-  const start = performance.now();
-  let lastTick = -1;
-  
-  function animate(now) {
-    let t = Math.min((now-start)/spinDuration,1);
-    let eased = easeInOut(t);
-    let targetAngle = minRot*2*Math.PI + (arc*selectedJackpotIndex) + arc/2;
-    jackpotCurrentAngle = (1-eased)*0 + eased*targetAngle;
-    
-    // ----- ZMIANA W ANIMACJI JACKPOT -----
-    // Rysujemy bezpośrednio na widocznym płótnie w każdej klatce
-    drawWheel_Direct(jackpotCtx, jackpotPrizes, -jackpotCurrentAngle, true);
-    
-    let tick = Math.floor((jackpotCurrentAngle/(2*Math.PI))*totalSegments)%totalSegments;
-    if (tick !== lastTick) {
-      jackpotPointerBounce();
-      lastTick = tick;
-    }
-    
-    if (t<1) {
-      animFrame = requestAnimationFrame(animate);
+  const totalProb = jackpotPrizes.reduce((sum, p) => sum + p.probability, 0);
+
+  let accumulatedAngle = 0;
+  for(let i = 0; i <= selectedJackpotIndex; i++) {
+    const angle = (jackpotPrizes[i].probability / totalProb) * 360;
+    if(i === selectedJackpotIndex) {
+      accumulatedAngle += (angle / 2);
     } else {
-      spinning = false;
-      drawWheel_Direct(jackpotCtx, jackpotPrizes, -jackpotCurrentAngle, true);
-      setTimeout(()=>showResult(jackpotPrizes[selectedJackpotIndex], true),1000);
+      accumulatedAngle += angle;
     }
   }
-  animate(performance.now());
-}
 
-function jackpotPointerBounce() {
-  const pointer = document.getElementById('jackpot-pointer');
-  pointer.classList.remove('bounce');
-  void pointer.offsetWidth;
-  pointer.classList.add('bounce');
+  const minRot = Math.floor(Math.random() * 4) + 5; // 5-8 obrotów
+  const targetAngle = (minRot * 360) + 360 - accumulatedAngle - 90;
+  const spinDuration = 5000 + Math.random() * 2000; // 5-7 sekund
+
+  const currentRotation = jackpotCurrentAngle % 360;
+  wheelElement.style.transition = 'none';
+  wheelElement.style.transform = `rotate(${currentRotation}deg)`;
   
-  playTickSound();
+  void wheelElement.offsetWidth;
+
+  wheelElement.style.transition = `transform ${spinDuration}ms cubic-bezier(.17,.86,.34,.99)`;
+  wheelElement.style.transform = `rotate(${targetAngle}deg)`;
+
+  jackpotCurrentAngle = targetAngle;
+
+  if(tickInterval) clearInterval(tickInterval);
+  tickInterval = setInterval(simulateTick, 150);
+
+  setTimeout(() => {
+    spinning = false;
+    clearInterval(tickInterval);
+    setTimeout(()=>showResult(jackpotPrizes[selectedJackpotIndex], true), 1000);
+  }, spinDuration);
 }
 
+
+// Funkcje świateł jackpot (bez zmian)
 function setupJackpotLights() {
   const cont = document.getElementById('jackpot-wheel-container');
   if (!cont) return;
-
   Array.from(cont.querySelectorAll('.jackpot-light')).forEach(e => e.remove());
-  
   const containerRect = cont.getBoundingClientRect();
   if (containerRect.width === 0) return; 
-
   const containerSize = Math.min(containerRect.width, containerRect.height);
   const radius = containerSize / 2 - 30; 
   const lightSize = containerSize * 0.04; 
-  
   for (let i = 0; i < jackpotLightsCount; i++) {
     const angle = (2 * Math.PI * i / jackpotLightsCount) - Math.PI / 2;
     const x = containerSize / 2 + Math.cos(angle) * radius - lightSize / 2 - 5;
@@ -884,9 +731,7 @@ function setupJackpotLights() {
   }
 }
 
-// ----- Reszta funkcji (showResult, hideWheelSmoothly, etc.) jest OK -----
-// ----- Zostają bez zmian -----
-
+// Funkcje pokazywania wyniku i restartu (z drobnymi zmianami)
 function showResult(prize, isJackpot) {
   if (isJackpot) {
     prevSeg.j = selectedJackpotIndex;
@@ -908,26 +753,16 @@ function showResult(prize, isJackpot) {
     resultGif = img;
   }
   
-  if (!isJackpot && prize.type === "jackpot") {
-    playJackpotSound();
-  } else if (!isJackpot && prize.type === "regular") {
-    playRegularWinSound();
-  } else if (isJackpot && prize.type === "special") {
-    playSpecialWinSound();
-  }
+  if (!isJackpot && prize.type === "jackpot") { playJackpotSound(); }
+  else if (!isJackpot && prize.type === "regular") { playRegularWinSound(); }
+  else if (isJackpot && prize.type === "special") { playSpecialWinSound(); }
 
   let ttsText = "";
-  if (!isJackpot && prize.type === "jackpot") {
-    ttsText = "DŻEKPOT! Przechodzę do losowania nagrody specjalnej!";
-  } else if (isJackpot) {
-    ttsText = `Gratulacje! Wylosowano ${prize.name}!`;
-  } else {
-    ttsText = `Wylosowano ${prize.name}`;
-  }
+  if (!isJackpot && prize.type === "jackpot") { ttsText = "DŻEKPOT! Przechodzę do losowania nagrody specjalnej!"; }
+  else if (isJackpot) { ttsText = `Gratulacje! Wylosowano ${prize.name}!`; }
+  else { ttsText = `Wylosowano ${prize.name}`; }
   
-  setTimeout(() => {
-    speakText(ttsText);
-  }, 800);
+  setTimeout(() => { speakText(ttsText); }, 800);
 
   if (isJackpot || prize.type === 'regular') {
     document.querySelectorAll('#label').forEach(l => l.style.opacity = '0');
@@ -935,29 +770,18 @@ function showResult(prize, isJackpot) {
   
   if (isJackpot) {
     if (jackpotLightInterval) clearInterval(jackpotLightInterval);
-
     const lights = Array.from(document.querySelectorAll('.jackpot-light'));
     lights.forEach(light => {
       light.classList.remove('on');
       light.classList.add('jackpot-lights-blink');
     });
-    
-    resultTimeout = setTimeout(() => {
-      removeResult();
-      hideWheelSmoothly();
-    }, 10000);
+    resultTimeout = setTimeout(() => { removeResult(); hideWheelSmoothly(); }, 10000);
   } else {
-    resultTimeout = setTimeout(() => {
-      removeResult();
-      hideWheelSmoothly();
-    }, 10000);
+    resultTimeout = setTimeout(() => { removeResult(); hideWheelSmoothly(); }, 10000);
   }
   
   if (!isJackpot && prize.type === "jackpot") {
-    setTimeout(()=>{
-      removeResult();
-      startJackpotPhase();
-    }, 1800);
+    setTimeout(()=>{ removeResult(); startJackpotPhase(); }, 1800);
   }
 }
 
@@ -979,9 +803,7 @@ function hideWheelSmoothly() {
       jackpotContainer.style.display = 'none';
       isJackpotPhase = false;
       document.querySelectorAll('#label').forEach(l => l.style.opacity = '1');
-      setTimeout(() => {
-        document.getElementById('restart-button').style.display = 'block';
-      }, 2000);
+      setTimeout(() => { document.getElementById('restart-button').style.display = 'block'; }, 2000);
     }, 1000);
   } else {
     wheelContainer.style.transition = 'opacity 1s ease';
@@ -989,16 +811,12 @@ function hideWheelSmoothly() {
     setTimeout(() => {
       wheelContainer.style.display = 'none';
       document.querySelectorAll('#label').forEach(l => l.style.opacity = '1');
-      setTimeout(() => {
-        document.getElementById('restart-button').style.display = 'block';
-      }, 2000);
+      setTimeout(() => { document.getElementById('restart-button').style.display = 'block'; }, 2000);
     }, 1000);
   }
 }
 
 function startCountdown() {
-  // ----- ZMIANA W STARTCOUNTDOWN -----
-  // Już nie rysujemy tutaj, rysowanie odbywa się w pętli 'animate'
   document.getElementById('restart-button').style.display = 'none';
   initAudio();
   
@@ -1014,36 +832,23 @@ function startCountdown() {
     cd.textContent = nums[idx];
     cd.style.opacity = 1;
     cd.style.transition = "opacity 0.4s";
-    
     playCountdownSound();
-    
     setTimeout(()=>{
       cd.style.opacity = 0;
-      setTimeout(()=>{
-        idx++; next();
-      }, 400);
+      setTimeout(()=>{ idx++; next(); }, 400);
     }, 750);
   }
   next();
 }
 
-document.getElementById('spin-button').onclick = ()=>{
-  if (!spinning && !isJackpotPhase) spinWheel();
-};
-document.getElementById('jackpot-spin-button').onclick = ()=>{
-  if (!spinning && isJackpotPhase) spinJackpotWheel();
-};
-window.spinFromOverlay = ()=> {
-  if (!spinning && !isJackpotPhase) spinWheel();
-};
-
+// Przyciski (bez zmian)
+document.getElementById('spin-button').onclick = ()=>{ if (!spinning && !isJackpotPhase) spinWheel(); };
+document.getElementById('jackpot-spin-button').onclick = ()=>{ if (!spinning && isJackpotPhase) spinJackpotWheel(); };
+window.spinFromOverlay = ()=> { if (!spinning && !isJackpotPhase) spinWheel(); };
 document.getElementById('jackpot-wheel-container').style.display = "none";
-
 initTTS();
 
-// ----- USUNIĘTE waitForFont() -----
-// Już go nie potrzebujemy, bo nie czekamy na czcionkę do rysowania na canvasie
-
+// Inicjalizacja przy ładowaniu strony
 window.onload = async () => {
   forceAudioInit();
   
@@ -1052,28 +857,25 @@ window.onload = async () => {
   hiddenButton.style.left = '-9999px';
   hiddenButton.style.opacity = '0';
   document.body.appendChild(hiddenButton);
+  setTimeout(() => { hiddenButton.click(); hiddenButton.remove(); }, 100);
   
-  setTimeout(() => {
-    hiddenButton.click();
-    hiddenButton.remove();
-  }, 100);
+  // Zrezygnowaliśmy z waitForFont, bo CSS sam obsłuży ładowanie
   
-  // ----- USUNIĘTE RYSOWANIE Z ONLOAD -----
-  // Nie musimy już niczego wstępnie rysować.
+  // ZBUDUJ KOŁA
+  buildWheel(prizes, 'wheel');
+  buildWheel(jackpotPrizes, 'jackpot-wheel');
   
+  // Logika ResizeObserver (bez zmian)
   const resizeObserver = new ResizeObserver(entries => {
     for (let entry of entries) {
       const containerWidth = entry.contentRect.width;
-
       setupJackpotLights();
-
       const newFontSize = containerWidth * 0.045;
       document.querySelectorAll('#label').forEach(label => {
         label.style.fontSize = `${newFontSize}px`;
       });
     }
   });
-
   const mainContainer = document.getElementById('wheel-container');
   if (mainContainer) {
     resizeObserver.observe(mainContainer);
@@ -1084,14 +886,16 @@ window.onload = async () => {
     });
   }
   
+  // Logika przycisku restartu (bez zmian)
   document.getElementById('restart-button').onclick = () => {
     if (spinning) return;
     document.getElementById('restart-button').style.display = 'none';
-    
     document.getElementById('wheel-container').style.display = 'block';
     
-    // Narysuj pierwszą klatkę, aby koło było widoczne przed odliczaniem
-    drawWheel_Direct(wheelCtx, prizes, 0, false);
+    // Resetuj kąt koła natychmiast, bez animacji
+    const wheelElement = document.getElementById('wheel');
+    wheelElement.style.transition = 'none';
+    wheelElement.style.transform = `rotate(${currentAngle % 360}deg)`;
     
     setTimeout(() => {
        document.getElementById('wheel-container').style.opacity = '1';
@@ -1099,8 +903,6 @@ window.onload = async () => {
     }, 10);
   };
   
-  // Narysuj pierwszą klatkę przy pierwszym ładowaniu strony
-  drawWheel_Direct(wheelCtx, prizes, 0, false);
   setTimeout(startCountdown, 400);
 };
 </script>
