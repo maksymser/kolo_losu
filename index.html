@@ -400,6 +400,7 @@ let jackpotLightInterval = null;
 let currentLightIndex = 0;
 
 let prevSeg = { m: -1, j: -1 };
+let isPreRendered = false;
 
 function initAudio() {
   if (!isAudioInitialized) {
@@ -1056,6 +1057,15 @@ function hideWheelSmoothly() {
 }
 
 function startCountdown() {
+  if (!isPreRendered) {
+    drawSegmentsOnCanvas(preCtx, prizes, false);
+    drawSegmentsOnCanvas(preJackpotCtx, jackpotPrizes, true);
+    
+    drawWheel(wheelCtx, preRenderedWheel, 0); 
+    
+    isPreRendered = true;
+  }
+
   document.getElementById('restart-button').style.display = 'none';
   initAudio();
   
@@ -1123,13 +1133,6 @@ window.onload = async () => {
     hiddenButton.click();
     hiddenButton.remove();
   }, 100);
-  
-  //await waitForFont();
-  
-  drawSegmentsOnCanvas(preCtx, prizes, false);
-  drawSegmentsOnCanvas(preJackpotCtx, jackpotPrizes, true);
-  
-  drawWheel(wheelCtx, preRenderedWheel, 0);
 
   const resizeObserver = new ResizeObserver(entries => {
     for (let entry of entries) {
