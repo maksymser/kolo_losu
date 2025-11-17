@@ -642,9 +642,13 @@ const preJackpotCtx = preRenderedJackpotWheel.getContext('2d');
 
 
 function drawSegmentsOnCanvas(ctx, prizesArr, isJackpot) {
+  console.log('Rysuję segmenty (wersja ultra-lite)... Czy to jest ' + isJackpot);
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   const total = prizesArr.length;
   const arc = 2 * Math.PI / total;
+
+  // Definiujemy kilka prostych, bezpiecznych kolorów
+  const simpleColors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
 
   for (let i = 0; i < total; i++) {
     const prize = prizesArr[i];
@@ -652,93 +656,43 @@ function drawSegmentsOnCanvas(ctx, prizesArr, isJackpot) {
     const endAngle = startAngle + arc;
 
     ctx.save();
+    
+    // 1. Rysowanie segmentu
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
     ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
     ctx.closePath();
 
+    // 2. Wypełnianie prostym kolorem (bez gradientów i cieni)
     if (prize.type === "jackpot" && !isJackpot) {
-      const grad = ctx.createRadialGradient(centerX, centerY, radius*0.2, centerX, centerY, radius);
-      grad.addColorStop(0.06, "#ebb059");
-      grad.addColorStop(0.26, "#fcff9e");
-      grad.addColorStop(0.43, "#ffd942");
-      grad.addColorStop(0.75, "#ffd175");
-      grad.addColorStop(1.00, "#c67700");
-      ctx.fillStyle = grad;
-    } else if (typeof prize.color === "string" && prize.color.startsWith("linear-gradient")) {
-      const match = prize.color.match(/linear-gradient\((\d+)deg,([^,]+),([^)]+)\)/);
-      if (match) {
-        const angleDeg = parseInt(match[1]);
-        const col1 = match[2].trim();
-        const col2 = match[3].trim();
-        const grad = ctx.createLinearGradient(
-          centerX + Math.cos((angleDeg-90)*Math.PI/180)*radius,
-          centerY + Math.sin((angleDeg-90)*Math.PI/180)*radius,
-          centerX - Math.cos((angleDeg-90)*Math.PI/180)*radius,
-          centerY - Math.sin((angleDeg-90)*Math.PI/180)*radius
-        );
-        grad.addColorStop(0, col1);
-        grad.addColorStop(1, col2);
-        ctx.fillStyle = grad;
-      } else {
-        ctx.fillStyle = "#888";
-      }
+        ctx.fillStyle = 'gold'; // Prosty złoty dla jackpotu
+    } else if (isJackpot) {
+        ctx.fillStyle = simpleColors[i % 4]; // Proste kolory dla jackpotu
     } else {
-      ctx.fillStyle = prize.color || "#3498db";
+        ctx.fillStyle = simpleColors[i % 6]; // Proste kolory dla koła
     }
-
-    ctx.shadowColor = "#000";
-    ctx.shadowBlur = 10;
     ctx.fill();
-    ctx.shadowBlur = 10;
 
+    // 3. Rysowanie obramowania (bezpieczne)
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    function truncateText(ctx, text, maxWidth) {
-      let ellipsis = '...';
-      let width = ctx.measureText(text).width;
-      if (width <= maxWidth) return text;
-      while (text.length > 0) {
-        text = text.slice(0, -1);
-        width = ctx.measureText(text + ellipsis).width;
-        if (width <= maxWidth) return text + ellipsis;
-      }
-      return ellipsis;
-    }
-
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(startAngle + arc/2);
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = isJackpot ? "bold 50px Arial" : "bold 30px Arial";
-    ctx.fillStyle = "#fff";
-    ctx.shadowColor = "#000";
-    ctx.shadowBlur = 3;
-    
-    const maxTextWidth = radius * arc * 1.3;
-    let label = prize.name;
-    label = truncateText(ctx, label, maxTextWidth);
-
-    ctx.fillText(label, radius * 0.60, 0);
-    ctx.shadowBlur = 0;
-    ctx.restore();
+    // 4. CELOWO NIE RYSUJEMY TEKSTU (ctx.fillText)
+    // To był nasz główny podejrzany.
 
     ctx.restore();
   }
   
+  // Rysowanie zewnętrznej ramki (bezpieczne)
   ctx.save();
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius+4, 0, 2*Math.PI);
   ctx.strokeStyle = "#fff";
   ctx.lineWidth = 4;
-  ctx.shadowColor = "#ffd700";
-  ctx.shadowBlur = isJackpot ? 16 : 8;
   ctx.stroke();
-  ctx.shadowBlur = 0;
   ctx.restore();
+  console.log('Rysowanie (ultra-lite) zakończone.');
 }
 
 function drawWheel(ctx, preRenderedCanvas, angle) {
