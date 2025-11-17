@@ -916,7 +916,4 @@ window.onload = async () => {
        document.getElementById('wheel-container').style.opacity = '1';
        setTimeout(startCountdown, 400);
     }, 10);
-  };
-  
-  setTimeout(startCountdown, 400);
 };
