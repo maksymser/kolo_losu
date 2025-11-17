@@ -1,4 +1,3 @@
-<script>
 document.addEventListener('DOMContentLoaded', () => {
   try {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -918,4 +917,3 @@ window.onload = async () => {
   
   setTimeout(startCountdown, 400);
 };
-</script>
