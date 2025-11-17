@@ -162,9 +162,8 @@ function initAudio() {
       isAudioInitialized = true;
     } catch (e) {
       console.log('Audio nie mogło zostać zainicjowane.');
-      isAudioInitialized = false; // Jawne ustawienie na false
-      audioContext = null; // Upewnij się, że jest nullem
-    }
+      isAudioInitialized = false;
+      audioContext = null;
   }
 }
 function forceAudioInit() {
@@ -879,27 +878,31 @@ window.onload = async () => {
     hiddenButton.remove();
   }, 100);
 
-  const resizeObserver = new ResizeObserver(entries => {
-    for (let entry of entries) {
-      const containerWidth = entry.contentRect.width;
+  try {
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        const containerWidth = entry.contentRect.width;
 
-      setupJackpotLights();
+        setupJackpotLights();
 
-      const newFontSize = containerWidth * 0.045;
+        const newFontSize = containerWidth * 0.045;
+        document.querySelectorAll('#label').forEach(label => {
+          label.style.fontSize = `${newFontSize}px`;
+        });
+      }
+    });
+
+    const mainContainer = document.getElementById('wheel-container');
+    if (mainContainer) {
+      resizeObserver.observe(mainContainer);
+      const initialWidth = mainContainer.offsetWidth;
+      const newFontSize = initialWidth * 0.045;
       document.querySelectorAll('#label').forEach(label => {
-        label.style.fontSize = `${newFontSize}px`;
+          label.style.fontSize = `${newFontSize}px`;
       });
     }
-  });
-
-  const mainContainer = document.getElementById('wheel-container');
-  if (mainContainer) {
-    resizeObserver.observe(mainContainer);
-    const initialWidth = mainContainer.offsetWidth;
-    const newFontSize = initialWidth * 0.045;
-    document.querySelectorAll('#label').forEach(label => {
-        label.style.fontSize = `${newFontSize}px`;
-    });
+  } catch (e) {
+    console.log('ResizeObserver nie jest wspierany, pomijam.');
   }
   
   document.getElementById('restart-button').onclick = () => {
