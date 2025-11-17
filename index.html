@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href='https://fonts.googleapis.com/css?family=Boldonse&display=swap' rel='stylesheet'>
+  <link rel="preload" href="https://fonts.googleapis.com/css?family=Boldonse" as="style">
+  <title>KOŁO LOSU</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+      background: transparent;
+      font-family: 'Boldonse';
+    }
+    #overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    #wheel-container, #jackpot-wheel-container {
+      position: relative;
+      width: 90vmin;
+      height: 90vmin;
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(255,255,255,0.2);
+      border: 8px solid #444;
+      background: transparent;
+      overflow: visible;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: opacity 0.5s;
+    }
+    #wheel, #jackpot-wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      position: relative;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.7);
+      background: transparent;
+      display: block;
+    }
+    #pointer, #jackpot-pointer {
+      position: absolute;
+      top: 50%;
+      left: 96%;
+      transform: translateY(-50%);
+      width: 7vmin;
+      height: 5vmin;
+      background: #ff2222;
+      clip-path: polygon(0 50%, 100% 75%, 100% 25%);
+      box-shadow: 0 0 10px #fff;
+      z-index: 1100;
+      pointer-events: none;
+      transition: filter 0.12s;
+    }
+    #pointer.bounce, #jackpot-pointer.bounce {
+      animation: pointerTick 0.2s;
+      transform-origin: 50% 50%;
+    }
+    @keyframes pointerTick {
+      0% { transform: translateY(-50%) rotate(0deg); }
+      50% { transform: translateY(-50%) rotate(15deg); }
+      100% { transform: translateY(-50%) rotate(0deg); }
+    }
+    #countdown {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10vmin;
+      color: white;
+      opacity: 0;
+      pointer-events: none;
+      font-weight: bold;
+      text-shadow: 0 0 25px #000, 0 0 5px #fff;
+      transition: opacity 0.3s;
+    }
+    #label {
+      position: absolute;
+      bottom: -10px;
+      width: auto;
+      padding: 8px 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 12px;
+      text-align: center;
+      font-size: 4vmin;
+      color: white;
+      font-weight: bold;
+      user-select: none;
+      letter-spacing: 0.2em;
+      text-shadow: 0 0 8px #000, 0 0 2px #fff;
+      margin: 0 auto;
+      left: 50%;
+      z-index: 1301;
+      transform: translateX(-50%);
+      transition: opacity 0.3s;
+    }
+    #result-message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 5vmin;
+      background: rgba(0,0,0,0.9);
+      padding: 30px 40px;
+      border-radius: 18px;
+      text-align: center;
+      z-index: 1300;
+      box-shadow: 0 0 40px #000, 0 0 10px #ffd700;
+      font-weight: bold;
+      text-shadow: 0 0 12px #000, 0 0 2px #fff;
+    }
+    #result-gif {
+      position: fixed;
+      top: 75%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 20vw;
+      max-height: 20vh;
+      z-index: 3001;
+      border-radius: 12px;
+      box-shadow: 0 0 30px #000, 0 0 10px #fff;
+      background: #222;
+      padding: 4px;
+    }
+    #spin-button, #jackpot-spin-button {
+      position:absolute;
+      top:50%;left:50%;
+      transform:translate(-50%, -50%);
+      width:120px;height:120px;
+      opacity:0.04;
+      border:none;
+      background:none;
+      cursor:pointer;
+      z-index:1200;
+    }
+    #restart-button {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      background: #fff;
+      opacity: 0.04;
+      border: none;
+      cursor: pointer;
+      z-index: 9999;
+      display: none;
+      border-radius: 50%;
+    }
+    #jackpot-glow {
+      position: absolute;
+      top: 25%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      font-size: 8vmin;
+      color: #ff2222;
+      -webkit-text-stroke: 1px #650d0d;    
+      font-weight: bold;
+      text-shadow:
+        0 0 30px #ff0000,
+        0 0 60px #ff2222,
+        0 0 100px #fff,
+        0 0 10px #fff;
+      animation: jackpotGlow 1.2s infinite alternate;
+      z-index: 1300;
+      pointer-events: none;
+      letter-spacing: 0.1em;
+      user-select: none;
+    }
+    @keyframes jackpotGlow {
+      0% { text-shadow: 0 0 10px #ff0000, 0 0 30px #fff;}
+      100% { text-shadow: 0 0 40px #ff0000, 0 0 100px #fff;}
+    }
+    .jackpot-light {
+      position: absolute;
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: #360000;
+      box-shadow: 0 0 10px #000;
+      transition: background 0.1s, box-shadow 0.1s;
+      z-index: 1250;
+    }
+    .jackpot-light.on {
+      background: #ff1111;
+      box-shadow: 0 0 24px #ff2222, 0 0 60px #ff0000;
+    }
+    .shimmer {
+      animation: shimmer 1s linear infinite;
+    }
+    @keyframes shimmer {
+      0% { filter: brightness(1.2) drop-shadow(0 0 10px #fff9); }
+      50% { filter: brightness(1.7) drop-shadow(0 0 30px #fff6); }
+      100% { filter: brightness(1.2) drop-shadow(0 0 10px #fff9); }
+    }
+    .jackpot-lights-blink {
+      animation: jackpotLightsBlink 0.1s infinite alternate;
+    }
+    @keyframes jackpotLightsBlink {
+      0% { 
+        background: #ff1111;
+        box-shadow: 0 0 24px #ff2222, 0 0 60px #ff0000;
+      }
+      100% { 
+        background: #360000;
+        box-shadow: 0 0 10px #000;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="overlay">
+  <div id="wheel-container">
+    <canvas id="wheel" width="1600" height="1600"></canvas>
+    <div id="pointer"></div>
+    <button id="spin-button"></button>
+    <div id="countdown"></div>
+    <div id="label">KOŁO LOSU</div>
+  </div>
+  <div id="jackpot-wheel-container" style="display:none;">
+    <canvas id="jackpot-wheel" width="1600" height="1600"></canvas>
+    <div id="jackpot-pointer"></div>
+    <button id="jackpot-spin-button"></button>
+    <div id="jackpot-glow">JACKPOT</div>
+    <div id="label">KOŁO LOSU</div>
+  </div>
+</div>
+<button id="restart-button"></button>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    isAudioInitialized = true;
+  } catch (e) {
+    console.log('Audio nie może być zainicjalizowane automatycznie');
+  }
+});
+const prizes = [
+  {
+    name: "Nic xd",
+    probability: 0.08,
+    type: "regular",
+    color: "linear-gradient(135deg, #8e44ad, #3498db)",
+    gif: "https://cdn.7tv.app/emote/01F38SGEQG000AG1XYT03162S8/4x.avif"
+  },
+  {
+    name: "Stanie na głowie",
+    probability: 0.10,
+    type: "regular",
+    color: "linear-gradient(135deg, #1d976c, #93f9b9)",
+    gif: "https://www.healthshots.com/wp-content/uploads/2019/12/Yoga-headstand.gif"
+  },
+  {
+    name: "Timeout 1h dla wybranego widza",
+    probability: 0.08,
+    type: "regular",
+    color: "linear-gradient(135deg, #009fff, #ec2f4b)",
+    gif: "https://cdn.7tv.app/emote/01H1848QNG0005EZED5J0EYKHR/4x.webp"
+  },
+  {
+    name: "Krzyczę BOKS - STOP",
+    probability: 0.08,
+    type: "regular",
+    color: "linear-gradient(135deg, #ff512f, #dd2476)",
+    gif: "https://cdn.7tv.app/emote/01G3SCEE20000AVHF824CCM0DA/4x.avif"
+  },
+  {
+    name: "Nic xd",
+    probability: 0.05,
+    type: "regular",
+    color: "linear-gradient(135deg, #8e44ad, #3498db)",
+    gif: "https://cdn.7tv.app/emote/01G6SRPZ400006H81S3K13JY36/4x.webp"
+  },
+  {
+    name: "Piję łyka wody (lub Dzika®)",
+    probability: 0.08,
+    type: "regular",
+    color: "linear-gradient(135deg, #32c4c0, #8de9d5)",
+    gif: "https://cdn.7tv.app/emote/01GCWH9E9R000D8RDSXFWM2GBA/4x.avif"
+  },
+  {
+    name: "10 pompek",
+    probability: 0.08,
+    type: "regular",
+    color: "linear-gradient(135deg, #fc466b, #3f5efb)",
+    gif: "https://cdn.7tv.app/emote/01F6R3WYDR000B7RB73RKS83AK/4x.avif"
+  },
+  {
+    name: "Nie odzywam się przez 2 minuty",
+    probability: 0.08,
+    type: "regular",
+    color: "linear-gradient(135deg, #00C9FF, #92FE9D)",
+    gif: "https://cdn.7tv.app/emote/01GYZBC7FR0006TGDMK2MFGXGW/4x.webp"
+  },
+  {
+    name: "Stoję w miejscu przez minutę",
+    probability: 0.08,
+    type: "regular",
+    color: "linear-gradient(135deg, #4b6cb7, #182848)",
+    gif: "https://cdn.7tv.app/emote/01GNQJGTSG00078AS6P1AC892Q/4x.webp"
+  },
+  {
+    name: "Krzyczę ło tego",
+    probability: 0.08,
+    type: "regular",
+    color: "linear-gradient(135deg, #8e44ad, #3498db)",
+    gif: "https://cdn.7tv.app/emote/01HZMZNZ1R000A9JQ25Y1DJD63/4x.avif"
+  },
+  {
+    name: "Nic xd",
+    probability: 0.08,
+    type: "regular",
+    color: "linear-gradient(135deg, #bc556f, #f9a470)", 
+    gif: "https://cdn.7tv.app/emote/01FZ975PV8000B4AWRZNMVNEXN/4x.avif"
+  },
+  {
+    name: "Mówię głosem dziwki przez 2 minuty",
+    probability: 0.08,
+    type: "regular",
+    color: "linear-gradient(135deg, #BB377D, #FBD3E9)",
+    gif: "https://media1.tenor.com/m/1SPr0yOrWdgAAAAd/paprikafume-slay-queen.gif"
+  },  
+   {
+    name: "TTS dla wszystkich na 2 minuty",
+    probability: 0.03,
+    type: "regular",
+    color: "linear-gradient(135deg, #00F260, #0575E6)", 
+    gif: "https://cdn.7tv.app/emote/01J7Q3Z76000083R3D97JFXMQB/4x.avif"
+  }, 
+  {
+    name: "JACKPOT",
+    probability: 0.02,
+    type: "jackpot",
+    color: "gold",
+    gif: ""
+  }
+];
+const jackpotPrizes = [
+ {
+    name: "Zeruję piwo", 
+    probability: 0.4, 
+    type: "special", 
+    color: "linear-gradient(135deg, #ffe898, #57370e)", 
+    gif: "https://cdn.7tv.app/emote/01H8CPJG9R0009CBM9NXZQY8HT/4x.avif"
+  },
+  {
+    name: "VIP", 
+    probability: 0.3, 
+    type: "special", 
+    color: "linear-gradient(135deg, #ffe898, #57370e)", 
+    gif: "https://cdn.7tv.app/emote/01FRVV7QRG00085N93FNKSBH7T/4x.avif"
+  },
+  {
+    name: "STREAM 24H!!!", 
+    probability: 0.3, 
+    type: "special", 
+    color: "linear-gradient(135deg, #ffe898, #57370e)", 
+    gif: "https://cdn.7tv.app/emote/01GTS711900000JXYVGQX3MQA9/4x.avif"
+  }
+];
+const jackpotLightsCount = 30; 
+let spinning = false;
+let selectedPrizeIndex = null;
+let selectedJackpotIndex = null;
+let isJackpotPhase = false;
+let animFrame = null;
+let currentAngle = 0, jackpotCurrentAngle = 0;
+let pointerLastTick = -1;
+let jackpotPointerLastTick = -1;
+let resultTimeout = null;
+let resultAnim = null;
+let resultGif = null;
+
+let audioContext = null;
+let isAudioInitialized = false;
+
+let jackpotLightInterval = null;
+let currentLightIndex = 0;
+
+let prevSeg = { m: -1, j: -1 };
+
+function initAudio() {
+  if (!isAudioInitialized) {
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().then(() => {
+          console.log('Audio context odblokowany');
+        });
+      }
+      isAudioInitialized = true;
+    } catch (e) {
+      console.log('Web Audio API nie jest obsługiwane');
+    }
+  }
+}
+function forceAudioInit() {
+  initAudio();
+  if (audioContext && audioContext.state === 'suspended') {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.01);
+  }
+}
+function playCountdownSound() {
+  if (!audioContext) return;
+  
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+  oscillator.type = 'sine';
+  
+  gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+  gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.01);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+  
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(audioContext.currentTime + 0.3);
+}
+function playTickSound() {
+  if (!audioContext) return;
+  
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+  oscillator.type = 'square';
+  
+  gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+  gainNode.gain.linearRampToValueAtTime(0.05, audioContext.currentTime + 0.005);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+  
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(audioContext.currentTime + 0.1);
+}
+
+function playRegularWinSound() {
+  if (!audioContext) return;
+
+  const melodies = [
+    [659.25, 783.99, 880, 783.99, 659.25, 880, 1046.50],
+    [530.81, 596, 530.81, 564.81, 596, 530.81, 661.63],
+    [482.41, 498, 516.54, 546.83, 574.61, 510, 530.81, 564.81]
+  ];
+
+  const selectedMelody = melodies[Math.floor(Math.random() * melodies.length)];
+  const noteDuration = 0.16;
+
+  selectedMelody.forEach((frequency, index) => {
+    const startTime = audioContext.currentTime + index * noteDuration;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+
+    osc.frequency.setValueAtTime(frequency, startTime);
+    osc.type = 'sine';
+
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.12, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration - 0.01);
+
+    osc.start(startTime);
+    osc.stop(startTime + noteDuration);
+  });
+}
+
+function playSpecialWinSound() {
+  if (!audioContext) return;
+
+  const melody = [
+   440, 523.25, 659.26, 783.99, 1046.5, 1318.5, 1568, 2093, 2637, 2093, 1568, 1318.5, 1046.5, 1568, 2093, 1568, 2093, 1568, 2093, 1568, 1568, 2093, 1568   
+  ];
+  const noteDuration = 0.12;
+
+  melody.forEach((frequency, index) => {
+    const startTime = audioContext.currentTime + index * noteDuration;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+
+    osc.frequency.setValueAtTime(frequency, startTime);
+    osc.type = 'sawtooth';
+
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.14, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration - 0.01);
+
+    osc.start(startTime);
+    osc.stop(startTime + noteDuration);
+  });
+}
+function playJackpotSound() {
+  if (!audioContext) return;
+  
+  const baseFreq = 261.63; 
+  const frequencies = [baseFreq, baseFreq * 1.25, baseFreq * 1.5, baseFreq * 2]; 
+  
+  frequencies.forEach((freq, index) => {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+    oscillator.type = 'sawtooth';
+    
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.08, audioContext.currentTime + 0.1);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 1.5);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 1.5);
+  });
+  
+  setTimeout(() => {
+    const melody = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50]; 
+    melody.forEach((frequency, index) => {
+      const startTime = audioContext.currentTime + index * 0.15;
+      
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      oscillator.type = 'triangle';
+      
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.12, startTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + 0.14);
+      
+      oscillator.start(startTime);
+      oscillator.stop(startTime + 0.15);
+    });
+  }, 300);
+}
+
+let selectedVoice = null;
+
+function initTTS() {
+  if (speechSynthesis.getVoices().length === 0) {
+    speechSynthesis.addEventListener('voiceschanged', () => {
+      selectPolishVoice();
+    });
+  } else {
+    selectPolishVoice();
+  }
+}
+
+function selectPolishVoice() {
+  const voices = speechSynthesis.getVoices();
+  selectedVoice = voices.find(voice => 
+    voice.lang.includes('pl') || 
+    voice.name.toLowerCase().includes('polish') ||
+    voice.name.toLowerCase().includes('paulina') ||
+    voice.name.toLowerCase().includes('zofia')
+  );
+  
+  if (!selectedVoice && voices.length > 0) {
+    selectedVoice = voices[0];
+  }
+  
+  console.log('Wybrany głos TTS:', selectedVoice?.name || 'Brak dostępnych głosów');
+}
+
+function speakText(text) {
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+    
+    utterance.rate = 1.35; 
+    utterance.pitch = 0.75; 
+    utterance.volume = 0.95; 
+    
+    speechSynthesis.speak(utterance);
+  } else {
+    console.log('TTS nie jest obsługiwane w tej przeglądarce');
+  }
+}
+
+const wheelCanvas = document.getElementById('wheel');
+const wheelCtx = wheelCanvas.getContext('2d');
+const jackpotCanvas = document.getElementById('jackpot-wheel');
+const jackpotCtx = jackpotCanvas.getContext('2d');
+const centerX = wheelCanvas.width / 2;
+const centerY = wheelCanvas.height / 2;
+const radius = wheelCanvas.width / 2 - 30;
+
+const preRenderedWheel = document.createElement('canvas');
+preRenderedWheel.width = wheelCanvas.width;
+preRenderedWheel.height = wheelCanvas.height;
+const preCtx = preRenderedWheel.getContext('2d');
+
+const preRenderedJackpotWheel = document.createElement('canvas');
+preRenderedJackpotWheel.width = jackpotCanvas.width;
+preRenderedJackpotWheel.height = jackpotCanvas.height;
+const preJackpotCtx = preRenderedJackpotWheel.getContext('2d');
+
+
+function drawSegmentsOnCanvas(ctx, prizesArr, isJackpot) {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  const total = prizesArr.length;
+  const arc = 2 * Math.PI / total;
+
+  for (let i = 0; i < total; i++) {
+    const prize = prizesArr[i];
+    const startAngle = i * arc;
+    const endAngle = startAngle + arc;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
+    ctx.closePath();
+
+    if (prize.type === "jackpot" && !isJackpot) {
+      const grad = ctx.createRadialGradient(centerX, centerY, radius*0.2, centerX, centerY, radius);
+      grad.addColorStop(0.06, "#ebb059");
+      grad.addColorStop(0.26, "#fcff9e");
+      grad.addColorStop(0.43, "#ffd942");
+      grad.addColorStop(0.75, "#ffd175");
+      grad.addColorStop(1.00, "#c67700");
+      ctx.fillStyle = grad;
+    } else if (typeof prize.color === "string" && prize.color.startsWith("linear-gradient")) {
+      const match = prize.color.match(/linear-gradient\((\d+)deg,([^,]+),([^)]+)\)/);
+      if (match) {
+        const angleDeg = parseInt(match[1]);
+        const col1 = match[2].trim();
+        const col2 = match[3].trim();
+        const grad = ctx.createLinearGradient(
+          centerX + Math.cos((angleDeg-90)*Math.PI/180)*radius,
+          centerY + Math.sin((angleDeg-90)*Math.PI/180)*radius,
+          centerX - Math.cos((angleDeg-90)*Math.PI/180)*radius,
+          centerY - Math.sin((angleDeg-90)*Math.PI/180)*radius
+        );
+        grad.addColorStop(0, col1);
+        grad.addColorStop(1, col2);
+        ctx.fillStyle = grad;
+      } else {
+        ctx.fillStyle = "#888";
+      }
+    } else {
+      ctx.fillStyle = prize.color || "#3498db";
+    }
+
+    ctx.shadowColor = "#000";
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.shadowBlur = 10;
+
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    function truncateText(ctx, text, maxWidth) {
+      let ellipsis = '...';
+      let width = ctx.measureText(text).width;
+      if (width <= maxWidth) return text;
+      while (text.length > 0) {
+        text = text.slice(0, -1);
+        width = ctx.measureText(text + ellipsis).width;
+        if (width <= maxWidth) return text + ellipsis;
+      }
+      return ellipsis;
+    }
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(startAngle + arc/2);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = isJackpot ? "bold 50px Boldonse" : "bold 30px Boldonse";
+    ctx.fillStyle = "#fff";
+    ctx.shadowColor = "#000";
+    ctx.shadowBlur = 3;
+    
+    const maxTextWidth = radius * arc * 1.3;
+    let label = prize.name;
+    label = truncateText(ctx, label, maxTextWidth);
+
+    ctx.fillText(label, radius * 0.60, 0);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    ctx.restore();
+  }
+  
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius+4, 0, 2*Math.PI);
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 4;
+  ctx.shadowColor = "#ffd700";
+  ctx.shadowBlur = isJackpot ? 16 : 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function drawWheel(ctx, preRenderedCanvas, angle) {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(angle);
+  ctx.drawImage(preRenderedCanvas, -centerX, -centerY);
+  ctx.restore();
+}
+
+function selectPrizeByProbability(arr, lastIdx) {
+  let selected = -1;
+  let attempts = 0; 
+  
+  while (attempts < 5) { 
+    let r = Math.random();
+    let sum = 0;
+    for (let i = 0; i < arr.length; i++) {
+      sum += arr[i].probability;
+      if (r <= sum) {
+        selected = i;
+        break;
+      }
+    }
+    if (selected === -1) selected = arr.length - 1;
+
+    if (arr.length <= 1) break; 
+
+    if (selected !== lastIdx) {
+      break; 
+    }
+    
+    attempts++;
+  }
+  return selected;
+}
+
+function easeInOut(t) {
+  return t<0.5 ? 4*t*t*t : 1-(-2*t+2)**3/2;
+}
+
+function spinWheel() {
+  if (spinning) return;
+  spinning = true;
+  isJackpotPhase = false;
+  document.getElementById('wheel-container').style.opacity = "1";
+  document.getElementById('jackpot-wheel-container').style.display = "none";
+  
+  selectedPrizeIndex = selectPrizeByProbability(prizes, prevSeg.m);
+  
+  const totalSegments = prizes.length;
+  const arc = 2*Math.PI/totalSegments;
+  const minRot = Math.floor(Math.random() * 5) + 4;  const spinDuration = 4000 + Math.random()*6000;
+  const start = performance.now();
+  let lastTick = -1;
+  
+  function animate(now) {
+    let t = Math.min((now-start)/spinDuration,1);
+    let eased = easeInOut(t);
+    let targetAngle = minRot*2*Math.PI + (arc*selectedPrizeIndex) + arc/2;
+    currentAngle = (1-eased)*0 + eased*targetAngle;
+    
+    drawWheel(wheelCtx, preRenderedWheel, -currentAngle);
+    
+    const jackpotIdx = prizes.findIndex(p=>p.type==="jackpot");
+    if (spinning && jackpotIdx>=0) {
+      const jackpotArcStart = -currentAngle + jackpotIdx*arc;
+      const jackpotArcEnd = jackpotArcStart + arc;
+      if (document.getElementById('wheel').classList) {
+        document.getElementById('wheel').classList.add('shimmer');
+        setTimeout(()=>document.getElementById('wheel').classList.remove('shimmer'), 500);
+      }
+    }
+    
+    let tick = Math.floor((currentAngle/(2*Math.PI))*totalSegments)%totalSegments;
+    if (tick !== lastTick) {
+      pointerBounce();
+      lastTick = tick;
+    }
+    
+    if (t<1) {
+      animFrame = requestAnimationFrame(animate);
+    } else {
+      spinning = false;
+      drawWheel(wheelCtx, preRenderedWheel, -currentAngle);
+      setTimeout(()=>showResult(prizes[selectedPrizeIndex], false),1000);
+    }
+  }
+  animate(performance.now());
+}
+
+function pointerBounce() {
+  const pointer = document.getElementById('pointer');
+  pointer.classList.remove('bounce');
+  void pointer.offsetWidth; 
+  pointer.classList.add('bounce');
+  
+  playTickSound();
+}
+
+function startJackpotPhase() {
+  isJackpotPhase = true;
+  document.getElementById('wheel-container').style.opacity = "0";
+  setTimeout(()=>{
+    document.getElementById('wheel-container').style.display = "none";
+    document.getElementById('jackpot-wheel-container').style.display = "block";
+    document.getElementById('jackpot-wheel-container').style.opacity = "1";
+    
+    drawWheel(jackpotCtx, preRenderedJackpotWheel, 0);
+    
+    setupJackpotLights();
+
+    if (jackpotLightInterval) clearInterval(jackpotLightInterval);
+    currentLightIndex = 0;
+    jackpotLightInterval = setInterval(() => {
+      const lights = Array.from(document.querySelectorAll('.jackpot-light'));
+      lights.forEach(l => l.classList.remove('on'));
+      if (lights[currentLightIndex]) {
+        lights[currentLightIndex].classList.add('on');
+      }
+      currentLightIndex = (currentLightIndex + 1) % jackpotLightsCount;
+    }, 75);
+
+    setTimeout(spinJackpotWheel, 700);
+  }, 500);
+}
+
+function spinJackpotWheel() {
+  if (spinning) return;
+  spinning = true;
+  
+  selectedJackpotIndex = selectPrizeByProbability(jackpotPrizes, prevSeg.j);
+  
+  const totalSegments = jackpotPrizes.length;
+  const arc = 2*Math.PI/totalSegments;
+  const minRot = 6;
+  const spinDuration = 4000 + Math.random()*4000;
+  const start = performance.now();
+  let lastTick = -1;
+  
+  function animate(now) {
+    let t = Math.min((now-start)/spinDuration,1);
+    let eased = easeInOut(t);
+    let targetAngle = minRot*2*Math.PI + (arc*selectedJackpotIndex) + arc/2;
+    jackpotCurrentAngle = (1-eased)*0 + eased*targetAngle;
+    
+    drawWheel(jackpotCtx, preRenderedJackpotWheel, -jackpotCurrentAngle);
+    
+    let tick = Math.floor((jackpotCurrentAngle/(2*Math.PI))*totalSegments)%totalSegments;
+    if (tick !== lastTick) {
+      jackpotPointerBounce();
+      lastTick = tick;
+    }
+    
+    if (t<1) {
+      animFrame = requestAnimationFrame(animate);
+    } else {
+      spinning = false;
+      drawWheel(jackpotCtx, preRenderedJackpotWheel, -jackpotCurrentAngle);
+      setTimeout(()=>showResult(jackpotPrizes[selectedJackpotIndex], true),1000);
+    }
+  }
+  animate(performance.now());
+}
+
+function jackpotPointerBounce() {
+  const pointer = document.getElementById('jackpot-pointer');
+  pointer.classList.remove('bounce');
+  void pointer.offsetWidth;
+  pointer.classList.add('bounce');
+  
+  playTickSound();
+}
+
+function setupJackpotLights() {
+  const cont = document.getElementById('jackpot-wheel-container');
+  if (!cont) return;
+
+  Array.from(cont.querySelectorAll('.jackpot-light')).forEach(e => e.remove());
+  
+  const containerRect = cont.getBoundingClientRect();
+  if (containerRect.width === 0) return; 
+
+  const containerSize = Math.min(containerRect.width, containerRect.height);
+  const radius = containerSize / 2 - 30; 
+  const lightSize = containerSize * 0.04; 
+  
+  for (let i = 0; i < jackpotLightsCount; i++) {
+    const angle = (2 * Math.PI * i / jackpotLightsCount) - Math.PI / 2;
+    const x = containerSize / 2 + Math.cos(angle) * radius - lightSize / 2 - 5;
+    const y = containerSize / 2 + Math.sin(angle) * radius - lightSize / 2;
+    const div = document.createElement('div');
+    div.className = 'jackpot-light';
+    div.style.width = lightSize + 'px';
+    div.style.height = lightSize + 'px';
+    div.style.left = x + 'px';
+    div.style.top = y + 'px';
+    cont.appendChild(div);
+  }
+}
+
+function showResult(prize, isJackpot) {
+  if (isJackpot) {
+    prevSeg.j = selectedJackpotIndex;
+  } else if (prize.type === 'regular') {
+    prevSeg.m = selectedPrizeIndex;
+  }
+
+  removeResult();
+  const div = document.createElement('div');
+  div.id = "result-message";
+  div.textContent = prize.name;
+  document.body.appendChild(div);
+  
+  if (prize.gif) {
+    const img = document.createElement('img');
+    img.id = "result-gif";
+    img.src = prize.gif;
+    document.body.appendChild(img);
+    resultGif = img;
+  }
+  
+  if (!isJackpot && prize.type === "jackpot") {
+    playJackpotSound();
+  } else if (!isJackpot && prize.type === "regular") {
+    playRegularWinSound();
+  } else if (isJackpot && prize.type === "special") {
+    playSpecialWinSound();
+  }
+
+  let ttsText = "";
+  if (!isJackpot && prize.type === "jackpot") {
+    ttsText = "DŻEKPOT! Przechodzę do losowania nagrody specjalnej!";
+  } else if (isJackpot) {
+    ttsText = `Gratulacje! Wylosowano ${prize.name}!`;
+  } else {
+    ttsText = `Wylosowano ${prize.name}`;
+  }
+  
+  setTimeout(() => {
+    speakText(ttsText);
+  }, 800);
+
+  if (isJackpot || prize.type === 'regular') {
+    document.querySelectorAll('#label').forEach(l => l.style.opacity = '0');
+  }
+  
+  if (isJackpot) {
+    if (jackpotLightInterval) clearInterval(jackpotLightInterval);
+
+    const lights = Array.from(document.querySelectorAll('.jackpot-light'));
+    lights.forEach(light => {
+      light.classList.remove('on');
+      light.classList.add('jackpot-lights-blink');
+    });
+    
+    resultTimeout = setTimeout(() => {
+      removeResult();
+      hideWheelSmoothly();
+    }, 10000);
+  } else {
+    resultTimeout = setTimeout(() => {
+      removeResult();
+      hideWheelSmoothly();
+    }, 10000);
+  }
+  
+  if (!isJackpot && prize.type === "jackpot") {
+    setTimeout(()=>{
+      removeResult();
+      startJackpotPhase();
+    }, 1800);
+  }
+}
+
+function removeResult() {
+  if (document.getElementById('result-message')) document.getElementById('result-message').remove();
+  if (resultGif && resultGif.parentNode) resultGif.remove();
+  resultGif = null;
+  if (resultTimeout) clearTimeout(resultTimeout);
+}
+
+function hideWheelSmoothly() {
+  const wheelContainer = document.getElementById('wheel-container');
+  const jackpotContainer = document.getElementById('jackpot-wheel-container');
+  const restartButton = document.getElementById('restart-button');
+
+  const fadeDuration = 500;
+  const delayAfterFade = 1000;
+
+  restartButton.style.display = 'none';
+  restartButton.style.pointerEvents = 'none';
+
+  const fadeOut = (container) => {
+    container.style.transition = `opacity ${fadeDuration / 1000}s ease`;
+    container.style.opacity = '0';
+    setTimeout(() => {
+      container.style.display = 'none';
+      document.querySelectorAll('#label').forEach(l => l.style.opacity = '1');
+    }, fadeDuration);
+  };
+
+  if (isJackpotPhase) {
+    fadeOut(jackpotContainer);
+    isJackpotPhase = false;
+  } else {
+    fadeOut(wheelContainer);
+  }
+
+  setTimeout(() => {
+    restartButton.style.display = 'block';
+    restartButton.style.pointerEvents = 'auto';
+  }, delayAfterFade);
+}
+
+function startCountdown() {
+  document.getElementById('restart-button').style.display = 'none';
+  initAudio();
+  
+  const cd = document.getElementById('countdown');
+  let nums = [3,2,1];
+  let idx = 0;
+  function next() {
+    if (idx >= nums.length) {
+      cd.style.opacity = 0;
+      setTimeout(spinWheel, 200);
+      return;
+    }
+    cd.textContent = nums[idx];
+    cd.style.opacity = 1;
+    cd.style.transition = "opacity 0.4s";
+    
+    playCountdownSound();
+    
+    setTimeout(()=>{
+      cd.style.opacity = 0;
+      setTimeout(()=>{
+        idx++; next();
+      }, 400);
+    }, 750);
+  }
+  next();
+}
+
+document.getElementById('spin-button').onclick = ()=>{
+  if (!spinning && !isJackpotPhase) spinWheel();
+};
+document.getElementById('jackpot-spin-button').onclick = ()=>{
+  if (!spinning && isJackpotPhase) spinJackpotWheel();
+};
+window.spinFromOverlay = ()=> {
+  if (!spinning && !isJackpotPhase) spinWheel();
+};
+
+document.getElementById('jackpot-wheel-container').style.display = "none";
+
+initTTS();
+
+function waitForFont() {
+  return new Promise((resolve) => {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        resolve();
+      });
+    } else {
+      setTimeout(resolve, 1000);
+    }
+  });
+}
+
+window.onload = async () => {
+  forceAudioInit();
+  
+  const hiddenButton = document.createElement('button');
+  hiddenButton.style.position = 'absolute';
+  hiddenButton.style.left = '-9999px';
+  hiddenButton.style.opacity = '0';
+  document.body.appendChild(hiddenButton);
+  
+  setTimeout(() => {
+    hiddenButton.click();
+    hiddenButton.remove();
+  }, 100);
+  
+  await waitForFont();
+  
+  drawSegmentsOnCanvas(preCtx, prizes, false);
+  drawSegmentsOnCanvas(preJackpotCtx, jackpotPrizes, true);
+  
+  drawWheel(wheelCtx, preRenderedWheel, 0);
+
+  const resizeObserver = new ResizeObserver(entries => {
+    for (let entry of entries) {
+      const containerWidth = entry.contentRect.width;
+
+      setupJackpotLights();
+
+      const newFontSize = containerWidth * 0.045;
+      document.querySelectorAll('#label').forEach(label => {
+        label.style.fontSize = `${newFontSize}px`;
+      });
+    }
+  });
+
+  const mainContainer = document.getElementById('wheel-container');
+  if (mainContainer) {
+    resizeObserver.observe(mainContainer);
+    const initialWidth = mainContainer.offsetWidth;
+    const newFontSize = initialWidth * 0.045;
+    document.querySelectorAll('#label').forEach(label => {
+        label.style.fontSize = `${newFontSize}px`;
+    });
+  }
+  
+  document.getElementById('restart-button').onclick = () => {
+    if (spinning) return;
+    document.getElementById('restart-button').style.display = 'none';
+    
+    document.getElementById('wheel-container').style.display = 'block';
+    drawWheel(wheelCtx, preRenderedWheel, 0);
+    
+    setTimeout(() => {
+       document.getElementById('wheel-container').style.opacity = '1';
+       setTimeout(startCountdown, 400);
+    }, 10);
+  };
+  
+  setTimeout(startCountdown, 400);
+};
+</script>
+</body>
+</html>
