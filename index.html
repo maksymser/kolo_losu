@@ -400,7 +400,6 @@ let jackpotLightInterval = null;
 let currentLightIndex = 0;
 
 let prevSeg = { m: -1, j: -1 };
-let isPreRendered = false;
 
 function initAudio() {
   if (!isAudioInitialized) {
@@ -714,7 +713,7 @@ function drawSegmentsOnCanvas(ctx, prizesArr, isJackpot) {
     ctx.rotate(startAngle + arc/2);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = isJackpot ? "bold 50px Boldonse" : "bold 30px Boldonse";
+    ctx.font = isJackpot ? "bold 50px Arial" : "bold 30px Arial";
     ctx.fillStyle = "#fff";
     ctx.shadowColor = "#000";
     ctx.shadowBlur = 3;
@@ -1057,15 +1056,10 @@ function hideWheelSmoothly() {
 }
 
 function startCountdown() {
-  if (!isPreRendered) {
-    drawSegmentsOnCanvas(preCtx, prizes, false);
-    drawSegmentsOnCanvas(preJackpotCtx, jackpotPrizes, true);
-    
-    drawWheel(wheelCtx, preRenderedWheel, 0); 
-    
-    isPreRendered = true;
-  }
-
+  drawSegmentsOnCanvas(preCtx, prizes, false);
+  drawSegmentsOnCanvas(preJackpotCtx, jackpotPrizes, true);
+  
+  drawWheel(wheelCtx, preRenderedWheel, 0);
   document.getElementById('restart-button').style.display = 'none';
   initAudio();
   
